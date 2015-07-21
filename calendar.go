@@ -14,6 +14,7 @@ import (
 const (
 	tmLabelShort = "2006-01-02"
 	tmLabelLong  = "2006-01-02T15:04:05-07:00"
+	tmShortTime  = "T00:00:00-04:00" // @TODO hardcoded timezone offset is no good. Fix.
 )
 
 type jEvent struct {
@@ -55,6 +56,7 @@ func MonthEvents(w http.ResponseWriter, r *http.Request) {
 		respondErr(w, r, http.StatusMethodNotAllowed, "invalid method: "+r.Method)
 		return
 	}
+
 	// the gorilla/mux package allows us to extract vars from path
 	vars := mux.Vars(r)
 	if vars["date"] == "" { // can't see getting routed here without this var, but...
@@ -89,11 +91,11 @@ func MonthEvents(w http.ResponseWriter, r *http.Request) {
 	res := []*jEvent{}
 	if len(events.Items) > 0 {
 		for _, i := range events.Items {
-			// fmt.Printf("event %+v\n", i)
 			ev := &jEvent{}
 			res1, _ := json.Marshal(i)
 			// Set color
 			ev.ColorBgd = clrs.Event[i.ColorId].Background
+
 			// If the DateTime is an empty string the Event is an all-day Event.
 			// Formatting date the same with allDayEvent flag allows end-user
 			// the option of how to handle
@@ -102,7 +104,9 @@ func MonthEvents(w http.ResponseWriter, r *http.Request) {
 				ev.Date = ts.Format(time.RFC3339)
 				ev.setAllDay(false)
 			} else {
-				ts, _ := time.ParseInLocation(tmLabelShort, i.Start.Date, loc)
+				// To keep things simple for the js date interpretation, we're formatting all day event
+				// dates the same as a DateTime (above)
+				ts, _ := time.Parse(tmLabelLong, i.Start.Date+tmShortTime)
 				ev.Date = ts.Format(time.RFC3339)
 				ev.setAllDay(true)
 			}

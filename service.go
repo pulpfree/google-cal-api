@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/user"
 	"path/filepath"
 
 	"google.golang.org/api/calendar/v3"
@@ -16,6 +15,11 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+)
+
+var (
+	credDir  = "credentials"
+	credUser = "sysadmin@pulpfreesolutions.com"
 )
 
 // CalService type
@@ -58,14 +62,12 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 // tokenCacheFile generates credential file path/filename.
 // It returns the generated credential path/filename.
 func tokenCacheFile() (string, error) {
-	usr, err := user.Current()
+	err := os.MkdirAll("./"+credDir, 0700)
 	if err != nil {
 		return "", err
 	}
-	tokenCacheDir := filepath.Join(usr.HomeDir, ".credentials")
-	os.MkdirAll(tokenCacheDir, 0700)
-	return filepath.Join(tokenCacheDir,
-		url.QueryEscape("calendar-api-quickstart.json")), err
+	return filepath.Join(credDir,
+		url.QueryEscape(credUser+".json")), err
 }
 
 // tokenFromFile retrieves a Token from a given file path.
@@ -95,19 +97,17 @@ func saveToken(file string, token *oauth2.Token) {
 
 // New returns service
 func (s *CalService) New() *calendar.Service {
-
 	ctx := context.Background()
-
-	b, err := ioutil.ReadFile("client_secret.json")
+	b, err := ioutil.ReadFile(filepath.Join(credDir, "client_secret.json"))
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
 
-	// config, err := google.ConfigFromJSON(b, calendar.CalendarReadonlyScope)
 	config, err := google.ConfigFromJSON(b, calendar.CalendarScope)
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
+
 	client := getClient(ctx, config)
 
 	srv, err := calendar.New(client)
